@@ -1,0 +1,54 @@
+version: '3.7'
+services:
+  mongo:
+    image: mongo:4.4.3
+    ports:
+      - 27017:27017
+#    environment:
+#      MONGO_INITDB_ROOT_USERNAME: root
+#      MONGO_INITDB_ROOT_PASSWORD: abcd1234
+    volumes:
+      - mongodb-volume:/data/db
+    labels:
+      - "traefik.http.services.db.loadbalancer.server.port=27017"
+#  mongo-express:
+#    image: mongo-express
+#    ports:
+#      - 8081:8081
+#    environment:
+#      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+#      ME_CONFIG_MONGODB_ADMINPASSWORD: abcd1234
+  app-asset-server:
+#    environment:
+#      - NODE_ENV=production
+#      - NODE_ENV=development
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - mongo
+    volumes:
+      - ./:/app
+      - /app/node_modules
+      - ./assets:/app/dist/apps/jy-release-server/assets
+    networks:
+      - db-tier
+      - traefik
+    command: yarn start:prod
+    #    command: sh docker-entrypoint.sh
+    ports:
+      - 3001:3003
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.asset-api.entrypoints=web, web-secure"
+      # 禁止非安全请求
+#      - "traefik.http.routers.picker-api.tls=true"
+      - "traefik.http.routers.asset-api.rule=Host(`asset.picker.cc`)"
+      - "traefik.docker.network=traefik"
+volumes:
+  redis-volume:
+  mongodb-volume:
+networks:
+  db-tier:
+  traefik:
+    external: true
